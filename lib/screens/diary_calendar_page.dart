@@ -22,6 +22,17 @@ class _DiaryCalendarPageState extends State<DiaryCalendarPage> {
     loadDiaries();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final month = _focusedDay.month;
+    final theme = monthThemes[month];
+    if (theme != null) {
+      precacheImage(AssetImage(theme.sticker), context);
+    }
+  }
+
+
   void loadDiaries() async {
     final data = await ApiService.getDiaries();
     diaryByDate = {
@@ -49,9 +60,7 @@ class _DiaryCalendarPageState extends State<DiaryCalendarPage> {
   @override
   Widget build(BuildContext context) {
     final month = _focusedDay.month;
-
-    print('Focused month: $month');
-    print('Theme bg: ${monthThemes[month]?.bg}');
+    final diaries = getDiariesByMonth();
 
     // 🎶 THEME PER BULAN + FALLBACK
     final theme = monthThemes[month] ??
@@ -173,20 +182,23 @@ class _DiaryCalendarPageState extends State<DiaryCalendarPage> {
                       child: DiaryModal(
                         date: selected,
                         diary: diary,
-                        onRefresh: loadDiaries,
                       ),
                     );
                   },
                   transitionBuilder: (context, anim1, anim2, child) {
                     return Transform.scale(
-                      scale: Curves.easeOutBack.transform(anim1.value),
+                      scale: Curves.easeOut.transform(anim1.value),
                       child: Opacity(
                         opacity: anim1.value,
                         child: child,
                       ),
                     );
                   },
-                );
+                ).then((result) {
+                  if (result == true) {
+                    loadDiaries(); // ✅ refresh setelah modal tertutup
+                  }
+                });
               },
 
               calendarStyle: CalendarStyle(
@@ -307,9 +319,10 @@ class _DiaryCalendarPageState extends State<DiaryCalendarPage> {
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(12),
-                        itemCount: getDiariesByMonth().length,
+                        itemCount: diaries.length,
                         itemBuilder: (context, i) {
-                          final d = getDiariesByMonth()[i];
+                          final d = diaries[i];
+
                           final date = DateTime.parse(d['diary_date']);
 
                           return Container(
